@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
 import { th } from "date-fns/locale"
-import { CalendarIcon, Clock, Trash2, Pencil, User, Trash, X } from "lucide-react"
+import { CalendarIcon, Clock, Trash2, Pencil, User, Trash, X, Link as LinkIcon } from "lucide-react"
 import { useTasksContext } from "@/components/tasks-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -99,6 +99,35 @@ export function EventDetailDialog({
         }
     }
 
+    const renderLinkified = (text: string) => {
+        const parts = text.split(/(https?:\/\/[^\s]+)/g)
+        return parts.map((part, idx) => {
+            if (/^https?:\/\//.test(part)) {
+                let domain = ""
+                try {
+                    domain = new URL(part).hostname.replace(/^www\./, "")
+                } catch {
+                    domain = ""
+                }
+                return (
+                    <a
+                        key={idx}
+                        href={part}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={part}
+                        className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold bg-blue-500/10 border-blue-500/25 text-blue-700 transition"
+                    >
+                        <LinkIcon className="size-3.5" />
+                        <span>ลิงก์</span>
+                        {domain && <span className="text-[10px] opacity-60">• {domain}</span>}
+                    </a>
+                )
+            }
+            return part
+        })
+    }
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg">
@@ -127,9 +156,9 @@ export function EventDetailDialog({
                                 <div className="space-y-1.5">
                                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40">Details</p>
                                     {event.description ? (
-                                        <p className="text-[15px] leading-relaxed text-muted-foreground/90 whitespace-pre-wrap font-medium">
-                                            {event.description}
-                                        </p>
+                                        <div className="text-[15px] leading-normal text-muted-foreground/90 whitespace-pre-wrap font-medium">
+                                            {renderLinkified(event.description)}
+                                        </div>
                                     ) : (
                                         <p className="text-sm italic text-muted-foreground/20 font-medium">No additional descriptions provided...</p>
                                     )}

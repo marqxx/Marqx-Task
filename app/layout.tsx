@@ -13,8 +13,8 @@ const _inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const _jetbrains = JetBrains_Mono({ subsets: ["latin"], variable: "--font-jetbrains" });
 
 export const metadata: Metadata = {
-  title: 'TaskFlow - Todo & Calendar',
-  description: 'A modern task management app with integrated calendar view',
+  title: 'HALF - Todo & Calendar',
+  description: 'By marqxx',
   generator: 'v0.app',
   icons: {
     icon: [
