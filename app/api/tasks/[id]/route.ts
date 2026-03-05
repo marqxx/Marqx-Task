@@ -255,13 +255,18 @@ export async function DELETE(
 
     if (hard) {
         await prisma.task.delete({ where: { id } })
-        await notifyDiscord(existing.userId, {
-            kind: "delete",
-            title: existing.title,
-            hard: true,
-            actorName: (session.user as any)?.name ?? null,
-            actorImage: (session.user as any)?.image ?? null,
-        })
+        // ข้ามการแจ้งเตือนถ้า Dev เป็นคนลบงานของตัวเอง
+        const isDevUser = (session.user as any)?.role === "MEMBER" || (session.user as any)?.role === "ADMIN"
+        const isDeletingOwnTask = existing.userId === session.user.id
+        if (!(isDevUser && isDeletingOwnTask)) {
+            await notifyDiscord(existing.userId, {
+                kind: "delete",
+                title: existing.title,
+                hard: true,
+                actorName: (session.user as any)?.name ?? null,
+                actorImage: (session.user as any)?.image ?? null,
+            })
+        }
         eventBus.emit("update", { type: "task-deleted", data: { id } })
         return NextResponse.json({ success: true, hardDelete: true })
     } else {
@@ -273,13 +278,18 @@ export async function DELETE(
                 updatedBy: { select: { name: true, image: true } }
             }
         })
-        await notifyDiscord(task.userId, {
-            kind: "delete",
-            title: task.title,
-            hard: false,
-            actorName: (session.user as any)?.name ?? null,
-            actorImage: (session.user as any)?.image ?? null,
-        })
+        // ข้ามการแจ้งเตือนถ้า Dev เป็นคนลบงานของตัวเอง
+        const isDevUser = (session.user as any)?.role === "MEMBER" || (session.user as any)?.role === "ADMIN"
+        const isDeletingOwnTask = task.userId === session.user.id
+        if (!(isDevUser && isDeletingOwnTask)) {
+            await notifyDiscord(task.userId, {
+                kind: "delete",
+                title: task.title,
+                hard: false,
+                actorName: (session.user as any)?.name ?? null,
+                actorImage: (session.user as any)?.image ?? null,
+            })
+        }
         eventBus.emit("update", { type: "task-deleted", data: task })
         return NextResponse.json({ success: true, softDelete: true })
     }
