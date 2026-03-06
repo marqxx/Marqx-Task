@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../lib/generated/prisma"
 }
 
 datasource db {
@@ -23,6 +22,8 @@ model User {
   events        CalendarEvent[]
   notes         Note[]
   webhookTemplates WebhookTemplate[]
+  webhookSchedules WebhookSchedule[]
+  imageUploads  ImageUpload[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -73,6 +74,7 @@ model Task {
   dueDate     DateTime?
   category    String    @default("Work")
   completedAt DateTime?
+  imageIds    String[]  @default([])
 
   userId String @db.ObjectId
   user   User   @relation("TaskCreator", fields: [userId], references: [id], onDelete: Cascade)
@@ -131,4 +133,27 @@ model WebhookTemplate {
   payload   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model WebhookSchedule {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url       String
+  payload   String
+  runAt     DateTime
+  createdAt DateTime @default(now())
+}
+
+model ImageUpload {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String   @db.ObjectId
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url        String
+  deleteUrl  String
+  fileName   String?
+  size       Int?
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  deletedAt  DateTime?
 }

@@ -10,6 +10,11 @@ export async function GET() {
   }
 
   try {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { lastActive: new Date() },
+    })
+
     // Get users active in the last 20 seconds
     const twentySecondsAgo = new Date(Date.now() - 20 * 1000)
 

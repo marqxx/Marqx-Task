@@ -12,7 +12,7 @@ import { TaskCalendar } from "@/components/task-calendar"
 import { TaskDetailDialog } from "@/components/task-detail-dialog"
 import { EventDetailDialog } from "@/components/event-detail-dialog"
 import { AddEventDialog } from "@/components/add-event-dialog"
-import { LayoutGrid, Archive, Columns3, List, Search, Sun, Moon, Trash2, ChevronDown, Plus, FileText, Send } from "lucide-react"
+import { LayoutGrid, Archive, Columns3, List, Search, Sun, Moon, Trash2, ChevronDown, Plus, FileText, Send, ImageUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,7 @@ import Link from "next/link"
 import type { Task, CalendarEvent } from "@/lib/types"
 import { AuthButton } from "@/components/auth-button"
 import { OnlineUsers } from "@/components/online-users"
+import { UploadsTab } from "@/components/uploads-tab"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -280,7 +281,7 @@ export default function Home() {
         </div>
       </header>
 
-      {sendHookOpen && (
+      {/* {sendHookOpen && (
         <div className="fixed bottom-6 right-6 z-40 w-[28rem] h-80 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
           <div className="px-3 py-2 text-xs font-semibold text-muted-foreground border-b border-border">Webhook JSON</div>
           <div className="h-[calc(100%-32px)] overflow-auto">
@@ -295,7 +296,7 @@ export default function Home() {
             </pre>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Content */}
       <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
@@ -315,6 +316,10 @@ export default function Home() {
               <TabsTrigger value="notes" className="gap-1.5" disabled={loading}>
                 <FileText className="size-4" />
                 Notes
+              </TabsTrigger>
+              <TabsTrigger value="uploads" className="gap-1.5" disabled={loading}>
+                <ImageUp className="size-4" />
+                Upload รูป
               </TabsTrigger>
             </TabsList>
 
@@ -388,6 +393,11 @@ export default function Home() {
                 {/* Notes Tab */}
                 <TabsContent value="notes">
                   <NoteTab />
+                </TabsContent>
+                
+                {/* Uploads Tab */}
+                <TabsContent value="uploads">
+                  <UploadsTab />
                 </TabsContent>
               </>
             )}

@@ -11,6 +11,7 @@ export interface Task {
   status: Status
   priority: Priority
   dueDate: Date | null
+  imageIds?: string[]
   createdAt: Date
   updatedAt: Date
   completedAt?: Date | null

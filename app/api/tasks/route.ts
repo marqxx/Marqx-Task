@@ -127,7 +127,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    const { title, description, status, priority, dueDate, category, tempId } = body
+    const { title, description, status, priority, dueDate, category, imageIds, tempId } = body
 
     const task = await prisma.task.create({
         data: {
@@ -137,6 +137,7 @@ export async function POST(req: Request) {
             priority: priority || "medium",
             dueDate: dueDate ? new Date(dueDate) : null,
             category: category || "Work",
+            imageIds: Array.isArray(imageIds) ? imageIds : [],
             completedAt: (status === "complete" || status === "done") ? new Date() : null,
             userId: session.user.id,
         },

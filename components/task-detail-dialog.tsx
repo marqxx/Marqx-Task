@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { format } from "date-fns"
 import { th } from "date-fns/locale"
-import { CalendarIcon, Clock, Tag, Flag, Layers, User, X, Pencil, Trash2, Trash, Link as LinkIcon } from "lucide-react"
+import { CalendarIcon, Clock, Tag, Flag, Layers, User, X, Pencil, Trash2, Trash, Link as LinkIcon, ImageUp } from "lucide-react"
 import { useTasksContext } from "@/components/tasks-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -64,6 +64,15 @@ export function TaskDetailDialog({
   const [priority, setPriority] = useState<Priority>("medium")
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined)
   const [category, setCategory] = useState("Work")
+  const [images, setImages] = useState<Array<{ id: string; url: string; fileName?: string | null }>>([])
+  const [preview, setPreview] = useState<{ id: string; url: string; fileName?: string | null } | null>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [replaceTarget, setReplaceTarget] = useState<string | null>(null)
+  const [activeImageId, setActiveImageId] = useState<string | null>(null)
+  const [imageUrl, setImageUrl] = useState("")
+  const [pasteActive, setPasteActive] = useState(false)
 
   useEffect(() => {
     if (task) {
@@ -74,8 +83,70 @@ export function TaskDetailDialog({
       setDueDate(task.dueDate ?? undefined)
       setCategory(task.category)
       setIsEditing(initialEditing)
+      const ids = (task as any).imageIds as string[] | undefined
+      if (ids && ids.length > 0) {
+        fetch(`/api/uploads/images?ids=${ids.join(",")}`)
+          .then(r => r.ok ? r.json() : [])
+          .then(data => setImages(data || []))
+          .catch(() => setImages([]))
+      } else {
+        setImages([])
+      }
     }
   }, [task, initialEditing])
+
+  useEffect(() => {
+    if (!pasteActive) return
+    const handler = async (e: ClipboardEvent) => {
+      if (!pasteActive) return
+      if (!e.clipboardData) return
+      const items = Array.from(e.clipboardData.items || [])
+      const fileItem = items.find(it => it.kind === "file" && it.type.startsWith("image/"))
+      if (fileItem) {
+        e.preventDefault()
+        const file = (fileItem as DataTransferItem).getAsFile()
+        if (file) {
+          setUploading(true)
+          try {
+            const form = new FormData()
+            form.append("file", file)
+            const r = await fetch("/api/uploads/images", { method: "POST", body: form })
+            const data = await r.json().catch(() => null)
+            if (!r.ok) {
+              alert(data?.error || "Upload failed")
+            } else if (data?.id && data?.url) {
+              setImages((prev) => [{ id: data.id, url: data.url, fileName: data.fileName }, ...prev])
+            }
+          } finally {
+            setUploading(false)
+          }
+        }
+        return
+      }
+      const text = e.clipboardData.getData("text")
+      if (text && /^https?:\/\//.test(text)) {
+        e.preventDefault()
+        setUploading(true)
+        try {
+          const r = await fetch("/api/uploads/images", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: text }),
+          })
+          const data = await r.json().catch(() => null)
+          if (!r.ok) {
+            alert(data?.error || "Upload failed")
+          } else if (data?.id && data?.url) {
+            setImages((prev) => [{ id: data.id, url: data.url, fileName: data.fileName }, ...prev])
+          }
+        } finally {
+          setUploading(false)
+        }
+      }
+    }
+    window.addEventListener("paste", handler as any)
+    return () => window.removeEventListener("paste", handler as any)
+  }, [pasteActive])
 
   if (!task) return null
 
@@ -87,6 +158,7 @@ export function TaskDetailDialog({
       priority,
       dueDate: dueDate ?? null,
       category,
+      imageIds: images.map(i => i.id),
       updatedBy: session?.user ? { name: session.user.name ?? null, image: session.user.image ?? null } : task.updatedBy,
     })
     onOpenChange(false)
@@ -140,6 +212,23 @@ export function TaskDetailDialog({
 
         {!isEditing ? (
           <div className="flex flex-col gap-6 py-2">
+            {images.length > 0 && (
+              <div className="rounded-xl border border-border/40 p-4 bg-secondary/30">
+                <p className="text-xs font-bold text-muted-foreground mb-2">Images</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {images.map(img => (
+                    <div key={img.id} className="relative group border rounded-md overflow-hidden">
+                      <img
+                        src={img.url}
+                        alt={img.fileName || img.id}
+                        className="w-full h-24 object-cover cursor-zoom-in"
+                        onClick={() => setPreview(img)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {task.deletedAt && (
               <div className="flex items-center gap-3 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 select-none">
                 <Trash2 className="size-4 text-red-500" />
@@ -299,6 +388,176 @@ export function TaskDetailDialog({
                 className="flex w-full rounded-md border border-input bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none max-h-[50vh] overflow-y-auto no-scrollbar"
               />
             </div>
+            {/* Images editing */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-muted-foreground">Images</label>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px] gap-1"
+                  onClick={() => { setReplaceTarget(null); inputRef.current?.click() }}
+                >
+                  <ImageUp className="size-3.5" />
+                  เพิ่มรูป
+                </Button>
+              </div>
+              {/* Dropzone on top, match New Task look */}
+              <div
+                className={`rounded-md border border-dashed px-3 py-3 text-xs select-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${dragOver ? "border-primary bg-primary/5" : "border-border"}`}
+                tabIndex={0}
+                role="button"
+                onFocus={() => setPasteActive(true)}
+                onBlur={() => setPasteActive(false)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); setReplaceTarget(null); inputRef.current?.click() } }}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={async (e) => {
+                  e.preventDefault()
+                  setDragOver(false)
+                  const file = e.dataTransfer.files?.[0]
+                  if (!file) return
+                  setUploading(true)
+                  try {
+                    const form = new FormData()
+                    form.append("file", file)
+                    const r = await fetch("/api/uploads/images", { method: "POST", body: form })
+                    const data = await r.json().catch(() => null)
+                    if (!r.ok) {
+                      alert(data?.error || "Upload failed")
+                    } else if (data?.id && data?.url) {
+                      setImages((prev) => [{ id: data.id, url: data.url, fileName: data.fileName }, ...prev])
+                    }
+                  } finally {
+                    setUploading(false)
+                  }
+                }}
+                onClick={() => {}}
+                title="ลากรูปวางที่นี่เพื่ออัปโหลด (จะถูกเก็บ 30 วัน)"
+              >
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setUploading(true)
+                    try {
+                      const form = new FormData()
+                      form.append("file", file)
+                      const r = await fetch("/api/uploads/images", { method: "POST", body: form })
+                      const data = await r.json().catch(() => null)
+                      if (!r.ok) {
+                        alert(data?.error || "Upload failed")
+                      } else if (data?.id && data?.url) {
+                        if (replaceTarget) {
+                          setImages((prev) => {
+                            const without = prev.filter(p => p.id !== replaceTarget)
+                            return [{ id: data.id, url: data.url, fileName: data.fileName }, ...without]
+                          })
+                          setReplaceTarget(null)
+                        } else {
+                          setImages((prev) => [{ id: data.id, url: data.url, fileName: data.fileName }, ...prev])
+                        }
+                      }
+                    } finally {
+                      setUploading(false)
+                      e.currentTarget.value = ""
+                    }
+                  }}
+                />
+                <div className="flex items-center gap-3">
+                  <div className={`rounded-md p-2 ${dragOver ? "bg-primary/10 text-primary" : "bg-secondary/60 text-muted-foreground"}`}>
+                    <ImageUp className="size-5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="text-foreground text-sm font-medium">ลากรูปวางที่นี่ หรือคลิกเพื่อเลือกไฟล์</div>
+                    <div className="text-[11px] text-muted-foreground">รูปจะถูกเก็บไว้ 30 วัน • ดูประวัติในแท็บ Upload รูป</div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto h-7 text-[11px]"
+                    onClick={(e) => { e.stopPropagation(); setReplaceTarget(null); inputRef.current?.click() }}
+                    title="เลือกไฟล์จากเครื่อง"
+                  >
+                    เลือกไฟล์
+                  </Button>
+                </div>
+                {uploading && <div className="mt-1 text-xs text-foreground">กำลังอัปโหลด...</div>}
+              </div>
+              <div className="flex gap-2 mt-2">
+                <Input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="วางลิงก์รูป (https://...)"
+                  className="bg-secondary text-foreground"
+                />
+                <Button
+                  size="sm"
+                  onClick={async () => {
+                    if (!/^https?:\/\//.test(imageUrl.trim())) return
+                    setUploading(true)
+                    try {
+                      const r = await fetch("/api/uploads/images", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ url: imageUrl.trim() }),
+                      })
+                      const data = await r.json().catch(() => null)
+                      if (!r.ok) {
+                        alert(data?.error || "Upload failed")
+                      } else if (data?.id && data?.url) {
+                        if (replaceTarget) {
+                          setImages((prev) => {
+                            const without = prev.filter(p => p.id !== replaceTarget)
+                            return [{ id: data.id, url: data.url, fileName: data.fileName }, ...without]
+                          })
+                          setReplaceTarget(null)
+                        } else {
+                          setImages((prev) => [{ id: data.id, url: data.url, fileName: data.fileName }, ...prev])
+                        }
+                        setImageUrl("")
+                      }
+                    } finally {
+                      setUploading(false)
+                    }
+                  }}
+                  className="h-9"
+                >
+                  นำเข้าจากลิงก์
+                </Button>
+              </div>
+              {images.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  {images.map((img) => (
+                    <div key={img.id} className="relative group border rounded-md overflow-hidden">
+                      <img
+                        src={img.url}
+                        alt={img.fileName || img.id}
+                        className="w-full h-24 object-cover select-none"
+                        draggable={false}
+                      />
+                      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition">
+                        <DeleteTaskDialog
+                          trigger={<Button size="sm" variant="outline" className="h-7 text-[11px] bg-white hover:bg-white">ลบ</Button>}
+                          title="Delete Image"
+                          description="ยืนยันลบรูปนี้จากคลัง (ImgBB) และลบออกจากงานทันที"
+                          onConfirm={async () => {
+                            const r = await fetch(`/api/uploads/images/${img.id}`, { method: "DELETE" })
+                            if (r.ok) {
+                              setImages(prev => prev.filter(p => p.id !== img.id))
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-2">
                 <label className="text-xs text-muted-foreground">Status</label>
@@ -393,6 +652,21 @@ export function TaskDetailDialog({
           )}
         </DialogFooter>
       </DialogContent>
+      {/* Image Preview */}
+      <Dialog open={!!preview} onOpenChange={(v) => { if (!v) setPreview(null) }}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-foreground text-sm">
+              {preview?.fileName || "image"}
+            </DialogTitle>
+          </DialogHeader>
+          {preview && (
+            <div className="w-full flex items-center justify-center">
+              <img src={preview.url} alt={preview.fileName || preview.id} className="max-h-[80vh] w-auto object-contain" />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog >
   )
 }

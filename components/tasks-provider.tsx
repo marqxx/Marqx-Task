@@ -21,6 +21,7 @@ interface TasksContextValue {
     description: string,
     status?: Status,
     createdBy?: { name: string | null; image: string | null },
+    imageIds?: string[],
   ) => void
   updateTask: (id: string, updates: Partial<Omit<Task, "id" | "createdAt">>) => void
   deleteTask: (id: string) => Promise<void>
@@ -85,6 +86,7 @@ function parseTask(raw: Record<string, unknown>): Task {
     status: raw.status as Status,
     priority: raw.priority as Priority,
     dueDate: raw.dueDate ? new Date(raw.dueDate as string) : null,
+    imageIds: (raw.imageIds as string[] | undefined) || [],
     createdAt: new Date(raw.createdAt as string),
     updatedAt: new Date(raw.updatedAt as string),
     completedAt: raw.completedAt ? new Date(raw.completedAt as string) : null,
@@ -301,6 +303,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     connectSSE();
 
     // Dedicated fast polling for online users (every 5s for snappy feel)
+    // This also acts as a heartbeat because the API updates lastActive
     const fetchOnlineUsers = async () => {
       try {
         const res = await fetch("/api/users/online")
@@ -310,26 +313,17 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         }
       } catch (e) { /* ignore */ }
     }
+    fetchOnlineUsers()
     const onlineInterval = setInterval(fetchOnlineUsers, 5000)
 
     // Fallback polling (every 30s) just in case SSE fails
     const fallbackInterval = setInterval(() => fetchData(true), 30000)
-
-    // Send heartbeat every 5 seconds to stay "online" (snappy)
-    const heartbeat = async () => {
-      try {
-        await fetch("/api/user/heartbeat", { method: "POST" })
-      } catch (e) { /* ignore */ }
-    }
-    heartbeat()
-    const heartbeatInterval = setInterval(heartbeat, 5000)
 
     return () => {
       if (eventSource) eventSource.close();
       if (retryTimeout) clearTimeout(retryTimeout);
       clearInterval(onlineInterval)
       clearInterval(fallbackInterval)
-      clearInterval(heartbeatInterval)
     }
   }, [session?.user?.id])
 
@@ -367,6 +361,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       description: string,
       status: Status = "todo",
       createdBy?: { name: string | null; image: string | null },
+      imageIds?: string[],
     ) => {
       // Use a robust temp ID
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -378,6 +373,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
         priority,
         dueDate: dueDate || null,
         category,
+        imageIds: imageIds || [],
         createdAt: new Date(),
         updatedAt: new Date(),
         completedAt: null,
@@ -399,6 +395,7 @@ export function TasksProvider({ children }: { children: ReactNode }) {
             priority,
             dueDate: dueDate?.toISOString() || null,
             category,
+            imageIds: imageIds || [],
             tempId, // Send tempId for SSE correlation
           }),
         })
