@@ -22,6 +22,7 @@ model User {
   updatedTasks  Task[]          @relation("TaskUpdater")
   events        CalendarEvent[]
   notes         Note[]
+  webhookTemplates WebhookTemplate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -119,4 +120,15 @@ model Note {
   deletedAt DateTime?
 
   @@index([deletedAt])
+}
+
+model WebhookTemplate {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  url       String
+  payload   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

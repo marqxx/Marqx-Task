@@ -22,6 +22,48 @@ export async function GET(
   return NextResponse.json(note)
 }
 
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  const role = (session.user as any).role
+  if (role !== "MEMBER" && role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
+  const { id } = await params
+  const existing = await prisma.note.findFirst({ where: { id } })
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+  const body = await req.json()
+  const { title, content, date, authorName, notionUrl, deletedAt } = body || {}
+
+  if (title === "" && content === "") {
+    return NextResponse.json({ error: "Title or content is required" }, { status: 400 })
+  }
+
+  const updates: any = {}
+  if (title !== undefined) updates.title = title || "Untitled"
+  if (content !== undefined) updates.content = content || ""
+  if (date !== undefined) updates.date = date ? new Date(date) : existing.date
+  if (authorName !== undefined) updates.authorName = authorName || null
+  if (notionUrl !== undefined) updates.notionUrl = notionUrl || null
+  if (deletedAt !== undefined) updates.deletedAt = deletedAt === null ? null : new Date(deletedAt)
+
+  const note = await prisma.note.update({
+    where: { id },
+    data: updates,
+    include: { user: { select: { name: true, image: true } } },
+  })
+
+  eventBus.emit("update", { type: "note-updated", data: note })
+  return NextResponse.json(note)
+}
+
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ id: string }> },

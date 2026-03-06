@@ -33,6 +33,7 @@ interface TasksContextValue {
   // Notes
   notes: Note[]
   addNote: (title: string, content: string, date: Date, authorName?: string) => Promise<Note | null>
+  updateNote: (id: string, updates: { title: string; content: string; date: Date }) => Promise<Note | null>
   deleteNote: (id: string) => Promise<void>
   getNotesForDate: (date: Date) => Note[]
   locale: "en" | "th"
@@ -255,6 +256,13 @@ export function TasksProvider({ children }: { children: ReactNode }) {
                 if (prev.some(n => n.id === incoming.id)) {
                   return prev.map(n => n.id === incoming.id ? incoming : n)
                 }
+                return [incoming, ...prev]
+              })
+            } else if (data.type === "note-updated") {
+              setNotes((prev) => {
+                const incoming = parseNote(data.data)
+                const exists = prev.some((n) => n.id === incoming.id)
+                if (exists) return prev.map((n) => (n.id === incoming.id ? incoming : n))
                 return [incoming, ...prev]
               })
             } else if (data.type === "note-deleted") {
@@ -697,6 +705,58 @@ export function TasksProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const updateNote = useCallback(async (id: string, updates: { title: string; content: string; date: Date }): Promise<Note | null> => {
+    const original = notes.find((n) => n.id === id)
+    if (!original) return null
+
+    setNotes((prev) =>
+      prev.map((n) =>
+        n.id === id
+          ? {
+            ...n,
+            title: updates.title,
+            content: updates.content,
+            date: updates.date,
+            updatedAt: new Date(),
+          }
+          : n,
+      ),
+    )
+
+    try {
+      const res = await fetch(`/api/notes/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: updates.title,
+          content: updates.content,
+          date: updates.date.toISOString(),
+        }),
+      })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData?.error || "Failed to update note")
+      }
+      const raw = await res.json()
+      const updated = parseNote(raw)
+      setNotes((prev) => prev.map((n) => (n.id === id ? updated : n)))
+      toast.success("Note updated")
+      return updated
+    } catch (err: any) {
+      console.error("Failed to update note:", err)
+      toast.error("Update error", { description: err?.message || String(err) })
+      setNotes((prev) => prev.map((n) => (n.id === id ? original : n)))
+      try {
+        const res = await fetch("/api/notes?limit=50")
+        if (res.ok) {
+          const data = await res.json()
+          setNotes(data.items.map(parseNote))
+        }
+      } catch { }
+      return null
+    }
+  }, [notes])
+
   const deleteNote = useCallback(async (id: string) => {
     // Optimistic: remove from state immediately
     setNotes((prev) => prev.filter((n) => n.id !== id))
@@ -788,13 +848,14 @@ export function TasksProvider({ children }: { children: ReactNode }) {
       getEventsForDate,
       notes,
       addNote,
+      updateNote,
       deleteNote,
       getNotesForDate,
       stats,
       locale,
       setLocale,
     }),
-    [tasks, activeTasks, archivedTasks, deletedTasks, deletedEvents, loading, onlineUsers, addTask, updateTask, deleteTask, getTasksForDate, events, addEvent, updateEvent, deleteEvent, getEventsForDate, notes, addNote, deleteNote, getNotesForDate, stats, locale],
+    [tasks, activeTasks, archivedTasks, deletedTasks, deletedEvents, loading, onlineUsers, addTask, updateTask, deleteTask, getTasksForDate, events, addEvent, updateEvent, deleteEvent, getEventsForDate, notes, addNote, updateNote, deleteNote, getNotesForDate, stats, locale],
   )
 
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>

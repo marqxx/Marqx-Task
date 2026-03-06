@@ -12,7 +12,7 @@ import { TaskCalendar } from "@/components/task-calendar"
 import { TaskDetailDialog } from "@/components/task-detail-dialog"
 import { EventDetailDialog } from "@/components/event-detail-dialog"
 import { AddEventDialog } from "@/components/add-event-dialog"
-import { LayoutGrid, Archive, Columns3, List, Search, Sun, Moon, Trash2, ChevronDown, Plus, FileText } from "lucide-react"
+import { LayoutGrid, Archive, Columns3, List, Search, Sun, Moon, Trash2, ChevronDown, Plus, FileText, Send } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -33,6 +33,7 @@ import { ButtonGroup, ButtonGroupSeparator } from "@/components/ui/button-group"
 import { StatsSkeleton, ListSkeleton, KanbanSkeleton, CalendarSkeleton } from "@/components/loading-skeleton"
 import { NoteTab } from "@/components/note-tab"
 import { AddNoteDialog } from "@/components/add-note-dialog"
+import SendHookDialog from "@/components/send-hook-dialog"
 
 export default function Home() {
   const {
@@ -62,6 +63,8 @@ export default function Home() {
   const [addTaskOpen, setAddTaskOpen] = useState(false)
   const [addEventOpen, setAddEventOpen] = useState(false)
   const [addNoteOpen, setAddNoteOpen] = useState(false)
+  const [sendHookOpen, setSendHookOpen] = useState(false)
+  const [hookPayload, setHookPayload] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
 
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null)
@@ -242,6 +245,10 @@ export default function Home() {
                       <FileText className="size-4" />
                       <span className="font-semibold text-sm">Add Note</span>
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSendHookOpen(true)} className="gap-2 h-10 rounded-md cursor-pointer">
+                      <Send className="size-4" />
+                      <span className="font-semibold text-sm">Send Hook</span>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </ButtonGroup>
@@ -250,6 +257,7 @@ export default function Home() {
             <AddTaskDialog onAdd={addTask} open={addTaskOpen} onOpenChange={setAddTaskOpen} />
             <AddEventDialog onAdd={addEvent} open={addEventOpen} onOpenChange={setAddEventOpen} />
             <AddNoteDialog open={addNoteOpen} onOpenChange={setAddNoteOpen} />
+            <SendHookDialog open={sendHookOpen} onOpenChange={setSendHookOpen} onPayloadChange={setHookPayload} />
 
             <div className="pl-1">
               <AuthButton />
@@ -271,6 +279,23 @@ export default function Home() {
           </div>
         </div>
       </header>
+
+      {sendHookOpen && (
+        <div className="fixed bottom-6 right-6 z-40 w-[28rem] h-80 rounded-xl border border-border bg-card shadow-lg overflow-hidden">
+          <div className="px-3 py-2 text-xs font-semibold text-muted-foreground border-b border-border">Webhook JSON</div>
+          <div className="h-[calc(100%-32px)] overflow-auto">
+            <pre className="p-3 text-xs whitespace-pre-wrap break-all text-foreground/90">
+              {(() => {
+                try {
+                  return JSON.stringify(JSON.parse(hookPayload || "{}"), null, 2)
+                } catch {
+                  return hookPayload || ""
+                }
+              })()}
+            </pre>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
