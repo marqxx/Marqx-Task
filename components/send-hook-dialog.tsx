@@ -26,6 +26,7 @@ export default function SendHookDialog({ open, onOpenChange, onPayloadChange }: 
   const [templateName, setTemplateName] = useState("")
   const [content, setContent] = useState("")
   const [embedsState, setEmbedsState] = useState<any[]>([])
+  const [collapsedEmbeds, setCollapsedEmbeds] = useState<Record<number, boolean>>({})
   const canUse = (data?.user as any)?.role === "MEMBER" || (data?.user as any)?.role === "ADMIN"
   const embeds = useMemo(() => {
     try {
@@ -184,6 +185,23 @@ export default function SendHookDialog({ open, onOpenChange, onPayloadChange }: 
     syncPayload(content, next)
   }
 
+  const toggleCollapse = (idx: number) => {
+    setCollapsedEmbeds((prev) => ({ ...prev, [idx]: !prev[idx] }))
+  }
+
+  const toLocalInputValue = (iso?: string) => {
+    if (!iso) return ""
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ""
+    const pad = (n: number) => String(n).padStart(2, "0")
+    const yyyy = d.getFullYear()
+    const mm = pad(d.getMonth() + 1)
+    const dd = pad(d.getDate())
+    const hh = pad(d.getHours())
+    const mi = pad(d.getMinutes())
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-5xl lg:max-w-7xl xl:max-w-[1280px]">
@@ -251,10 +269,17 @@ export default function SendHookDialog({ open, onOpenChange, onPayloadChange }: 
                 <div className="flex flex-col gap-3">
                   {embedsState.map((e, i) => (
                     <div key={i} className="rounded-lg border border-border bg-card p-3 space-y-2">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <div className="text-sm font-semibold">Embed {i + 1}</div>
-                        <Button variant="outline" onClick={() => removeEmbed(i)}>Remove</Button>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" onClick={() => toggleCollapse(i)} className="h-7 px-2">
+                            {collapsedEmbeds[i] ? "Expand" : "Collapse"}
+                          </Button>
+                          <Button variant="outline" onClick={() => removeEmbed(i)} className="h-7 px-2">Remove</Button>
+                        </div>
                       </div>
+                      {!collapsedEmbeds[i] && (
+                      <>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1.5">
                           <label className="text-xs text-muted-foreground">Title</label>
@@ -313,8 +338,34 @@ export default function SendHookDialog({ open, onOpenChange, onPayloadChange }: 
                           <Input value={e.footer?.icon_url || ""} onChange={(ev) => updateEmbed(i, "footer", { ...(e.footer || {}), icon_url: ev.target.value })} className="bg-secondary text-foreground" />
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" onClick={() => updateEmbed(i, "timestamp", new Date().toISOString())}>Insert Timestamp</Button>
+                      <div className="grid grid-cols-[1fr_auto_auto] gap-2 items-end">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-xs text-muted-foreground">Timestamp</label>
+                          <Input
+                            type="datetime-local"
+                            value={toLocalInputValue(e.timestamp)}
+                            onChange={(ev) => {
+                              const raw = ev.target.value
+                              if (!raw) {
+                                updateEmbed(i, "timestamp", undefined)
+                                return
+                              }
+                              const d = new Date(raw)
+                              if (isNaN(d.getTime())) {
+                                updateEmbed(i, "timestamp", undefined)
+                                return
+                              }
+                              updateEmbed(i, "timestamp", d.toISOString())
+                            }}
+                            className="bg-secondary text-foreground"
+                          />
+                        </div>
+                        <Button variant="outline" onClick={() => updateEmbed(i, "timestamp", new Date().toISOString())} className="self-end h-9">
+                          Now
+                        </Button>
+                        <Button variant="outline" onClick={() => updateEmbed(i, "timestamp", undefined)} className="self-end h-9">
+                          Clear
+                        </Button>
                       </div>
                       <div className="flex items-center justify-between">
                         <div className="text-xs text-muted-foreground">Fields</div>
@@ -330,6 +381,8 @@ export default function SendHookDialog({ open, onOpenChange, onPayloadChange }: 
                             </div>
                           ))}
                         </div>
+                      )}
+                      </>
                       )}
                     </div>
                   ))}
