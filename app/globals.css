@@ -188,3 +188,79 @@
     @apply select-text;
   }
 }
+
+@layer components {
+  /* Image loading animations */
+  .image-loading-skeleton {
+    @apply bg-muted animate-pulse;
+  }
+
+  .image-fade-in {
+    animation: imageFadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes imageFadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Image grid optimizations */
+  .image-grid-item {
+    @apply relative overflow-hidden rounded-md border border-border;
+    will-change: transform;
+  }
+
+  .image-grid-item img {
+    @apply transition-all duration-200 ease-in-out;
+    will-change: transform, opacity;
+  }
+
+  .image-grid-item:hover img {
+    @apply scale-105;
+  }
+
+  /* Lazy loading placeholder */
+  .image-placeholder {
+    @apply bg-gradient-to-br from-muted to-muted/50;
+    background-size: 200% 200%;
+    animation: shimmer 2s infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* Image error state */
+  .image-error {
+    @apply bg-muted flex items-center justify-center text-muted-foreground text-xs;
+  }
+
+  /* Smooth loading transitions */
+  .image-transition {
+    @apply transition-opacity duration-300 ease-in-out;
+  }
+
+  .image-loading {
+    @apply opacity-0;
+  }
+
+  .image-loaded {
+    @apply opacity-100;
+  }
+
+  /* Preloading optimizations */
+  .image-preloaded {
+    content-visibility: auto;
+  }
+}

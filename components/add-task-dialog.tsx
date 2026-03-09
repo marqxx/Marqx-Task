@@ -27,6 +27,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import type { Priority, Status } from "@/lib/types"
+import { PreloadedImage, PreloadedImageGrid } from "@/components/preloaded-image"
 
 interface AddTaskDialogProps {
   onAdd: (title: string, priority: Priority, dueDate: Date | null, category: string, description: string, status?: Status, createdBy?: { name: string | null; image: string | null }, imageIds?: string[]) => void
@@ -266,29 +267,13 @@ export function AddTaskDialog({ onAdd, open: controlledOpen, onOpenChange: setCo
 
             {/* Thumbnails */}
             {images.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 mt-1">
-                {images.map((img) => (
-                  <div key={img.id} className="relative group border rounded-md overflow-hidden">
-                    <img
-                      src={img.url}
-                      alt={img.fileName || img.id}
-                      className="w-full h-24 object-cover cursor-zoom-in"
-                      onClick={() => setPreview(img)}
-                    />
-                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition">
-                      <DeleteTaskDialog
-                        trigger={<Button size="sm" variant="outline" className="h-7 text-xs">ลบ</Button>}
-                        title="Delete Image"
-                        description="ยืนยันลบรูปนี้ทันที รูปจะถูกลบออกจาก ImgBB และรายการของคุณ"
-                        onConfirm={async () => {
-                          const r = await fetch(`/api/uploads/images/${img.id}`, { method: "DELETE" })
-                          if (r.ok) setImages((prev) => prev.filter((x) => x.id !== img.id))
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <PreloadedImageGrid
+                images={images}
+                className="mt-1"
+                itemClassName="border rounded-md overflow-hidden"
+                onImageClick={setPreview}
+                priority={true}
+              />
             )}
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -378,7 +363,14 @@ export function AddTaskDialog({ onAdd, open: controlledOpen, onOpenChange: setCo
           </DialogHeader>
           {preview && (
             <div className="w-full flex items-center justify-center">
-              <img src={preview.url} alt={preview.fileName || preview.id} className="max-h-[80vh] w-auto object-contain" />
+              <PreloadedImage
+                src={preview.url}
+                alt={preview.fileName || preview.id}
+                className="max-h-[80vh] w-auto object-contain"
+                priority={true}
+                fadeIn={false}
+                showLoading={true}
+              />
             </div>
           )}
         </DialogContent>

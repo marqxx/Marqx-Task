@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { DeleteTaskDialog } from "@/components/delete-task-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { PreloadedImage } from "@/components/preloaded-image"
 
 type ImageItem = {
   id: string
@@ -81,11 +82,15 @@ export function UploadsTab() {
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {items.map((it) => (
             <div key={it.id} className="border rounded-md overflow-hidden">
-              <img
+              <PreloadedImage
                 src={it.url}
                 alt={it.fileName || it.id}
                 className="w-full h-48 object-cover bg-muted cursor-zoom-in"
                 onClick={() => setPreview(it)}
+                priority={false}
+                fadeIn={true}
+                showLoading={true}
+                loadingClassName="h-48"
               />
               <div className="p-3 text-xs flex items-center justify-between gap-2">
                 <div className="min-w-0">
@@ -129,7 +134,14 @@ export function UploadsTab() {
         </DialogHeader>
         {preview && (
           <div className="w-full flex items-center justify-center">
-            <img src={preview.url} alt={preview.fileName || preview.id} className="max-h-[80vh] w-auto object-contain" />
+            <PreloadedImage
+              src={preview.url}
+              alt={preview.fileName || preview.id}
+              className="max-h-[80vh] w-auto object-contain"
+              priority={true}
+              fadeIn={false}
+              showLoading={true}
+            />
           </div>
         )}
       </DialogContent>

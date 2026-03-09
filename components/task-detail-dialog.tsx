@@ -13,6 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { DeleteTaskDialog } from "@/components/delete-task-dialog"
+import { PreloadedImage } from "@/components/preloaded-image"
 import {
   Select,
   SelectContent,
@@ -534,10 +535,14 @@ export function TaskDetailDialog({
                 <div className="grid grid-cols-3 gap-2 mt-1">
                   {images.map((img) => (
                     <div key={img.id} className="relative group border rounded-md overflow-hidden">
-                      <img
+                      <PreloadedImage
                         src={img.url}
                         alt={img.fileName || img.id}
                         className="w-full h-24 object-cover select-none"
+                        priority={false}
+                        fadeIn={true}
+                        showLoading={true}
+                        loadingClassName="h-24"
                         draggable={false}
                       />
                       <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition">

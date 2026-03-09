@@ -6,13 +6,10 @@ const IMGBB_ENDPOINT = "https://api.imgbb.com/1/upload"
 const THIRTY_DAYS_SECONDS = 30 * 24 * 60 * 60
 
 export async function GET(req: Request) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   try {
     const { searchParams } = new URL(req.url)
     const idsParam = searchParams.get("ids")
     const baseWhere: any = {
-      userId: session.user.id,
       OR: [
         { deletedAt: null },
         { deletedAt: { isSet: false } as any },
