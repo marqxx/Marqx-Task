@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ImgHTMLAttributes } from 'react'
 import { imagePreloader } from '@/lib/image-preloader'
 import { cn } from '@/lib/utils'
 import { Spinner } from './ui/spinner'
 
-interface PreloadedImageProps {
+type PreloadedImageProps = Omit<
+  ImgHTMLAttributes<HTMLImageElement>,
+  "src" | "alt" | "className" | "width" | "height" | "onLoad" | "onError"
+> & {
   src: string
   alt?: string
   className?: string
@@ -30,7 +33,8 @@ export function PreloadedImage({
   showLoading = true,
   loadingClassName,
   fadeIn = true,
-  priority = false
+  priority = false,
+  ...imgProps
 }: PreloadedImageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
@@ -156,6 +160,7 @@ export function PreloadedImage({
       )}
       <img
         ref={imgRef}
+        {...imgProps}
         src={priority ? undefined : src}
         alt={alt}
         className={cn(
@@ -173,10 +178,10 @@ export function PreloadedImage({
 }
 
 interface PreloadedImageGridProps {
-  images: Array<{ id: string; url: string; fileName?: string }>
+  images: Array<{ id: string; url: string; fileName?: string | null }>
   className?: string
   itemClassName?: string
-  onImageClick?: (image: { id: string; url: string; fileName?: string }) => void
+  onImageClick?: (image: { id: string; url: string; fileName?: string | null }) => void
   priority?: boolean
 }
 

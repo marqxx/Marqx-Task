@@ -8,7 +8,6 @@ export async function GET() {
   const role = (session.user as any).role
   if (role !== "MEMBER" && role !== "ADMIN") return NextResponse.json([], { status: 200 })
   const templates = await prisma.webhookTemplate.findMany({
-    where: { userId: session.user.id },
     orderBy: { updatedAt: "desc" },
   })
   return NextResponse.json(templates)
@@ -29,6 +28,10 @@ export async function POST(req: Request) {
   }
   // Update by explicit id if provided
   if (id) {
+    const existing = await prisma.webhookTemplate.findFirst({
+      where: { id, userId: session.user.id },
+    })
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
     const updated = await prisma.webhookTemplate.update({
       where: { id },
       data: { name, url, payload },
